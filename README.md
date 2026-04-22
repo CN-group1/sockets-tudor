@@ -1,1 +1,3 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/SsfEgNPI)
+### Wireshark
+"buna, mai" - can be viewed in the bottom-right corner of the Wireshark window, in the status bar. It indicates that the capture is running and that there are packets being captured.
+![img.png](img.png)
