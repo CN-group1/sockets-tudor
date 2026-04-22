@@ -3,6 +3,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class Main {
 
@@ -62,23 +64,25 @@ public class Main {
 
     private static void udpServer() throws IOException {
         DatagramSocket serverSocket = new DatagramSocket(9090);
+        // local receive buffer size
         byte[] buffer = new byte[1024];
-        InetAddress clientAddress = null;
-        int clientPort = -1;
+        // thread-safe references for client address and port shared between threads
+        final AtomicReference<InetAddress> clientAddressRef = new AtomicReference<>(null);
+        final AtomicInteger clientPortRef = new AtomicInteger(-1);
 
         // Thread for receiving messages from client
         Thread readerThread = new Thread(() -> {
             try {
                 while (true) {
-                    DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                    DatagramPacket packet = new DatagramPacket(new byte[buffer.length], buffer.length);
                     serverSocket.receive(packet);
                     String message = new String(packet.getData(), 0, packet.getLength());
                     System.out.println("Received message from client: " + message);
 
                     // Store client address and port on first receive
-                    if (clientAddress == null) {
-                        clientAddress = packet.getAddress();
-                        clientPort = packet.getPort();
+                    if (clientAddressRef.get() == null) {
+                        clientAddressRef.set(packet.getAddress());
+                        clientPortRef.set(packet.getPort());
                     }
 
                     if (message.startsWith("end")) {
@@ -97,19 +101,19 @@ public class Main {
                 BufferedReader consoleIn = new BufferedReader(new InputStreamReader(System.in));
                 while (true) {
                     // Wait until client is known
-                    if (clientAddress[0] == null) {
+                    if (clientAddressRef.get() == null) {
                         Thread.sleep(100);
                         continue;
                     }
                     String input = consoleIn.readLine();
                     if (input.equals("end")) {
                         byte[] endBuffer = input.getBytes();
-                        DatagramPacket endPacket = new DatagramPacket(endBuffer, endBuffer.length, clientAddress[0], clientPort[0]);
+                        DatagramPacket endPacket = new DatagramPacket(endBuffer, endBuffer.length, clientAddressRef.get(), clientPortRef.get());
                         serverSocket.send(endPacket);
                         break;
                     }
                     byte[] sendBuffer = input.getBytes();
-                    DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, clientAddress[0], clientPort[0]);
+                    DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, clientAddressRef.get(), clientPortRef.get());
                     serverSocket.send(sendPacket);
                 }
             } catch (IOException | InterruptedException e) {
@@ -132,8 +136,8 @@ public class Main {
 
     public static void main(String[] args) {
         try {
-//            tcpServer();
-            udpServer();
+            tcpServer();
+            // udpServer();
         } catch (IOException e) {
             System.out.println(e.getMessage());
         }
